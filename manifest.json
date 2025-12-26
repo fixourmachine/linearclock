@@ -1,7 +1,7 @@
 {
-  "name": "Linear Clockworks",
+  "name": "Linear Clock",
   "short_name": "LinearClock",
-  "start_url": "./linear_clock.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#2a1b12",
   "theme_color": "#2a1b12",
