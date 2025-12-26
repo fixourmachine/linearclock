@@ -1,6 +1,6 @@
 const CACHE_NAME = 'linear-clock-v1';
 const ASSETS_TO_CACHE = [
-  './linear_clock.html',
+  './index.html',
   './manifest.json',
   // Add your icon filenames here if you have them
   // './icon-192.png',
