@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Linear Clockworks</title>
+    
+    <!-- PWA Configuration -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2a1b12">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
+    <style>
+        :root {
+            --wood-dark: #2a1b12;
+            --wood-light: #3e281b;
+            --brass-light: #fffacd;
+            --brass-main: #d4af37;
+            --brass-dark: #8a6e2f;
+            --brass-shadow: #1a1205;
+            --indicator-color: #e62e2e;
+            /* Width of the wooden end caps */
+            --edge-width: 45px; 
+            
+            /* Theme Variables */
+            --bg-color: #1a1a1a;
+            --text-color: #eee;
+            --digital-color: #d4af37;
+            --digital-shadow: 0 0 5px rgba(212, 175, 55, 0.3);
+        }
+
+        /* Light Mode Overrides */
+        body.light-mode {
+            --bg-color: #e6e2d3; /* Warm cream wall */
+            --text-color: #2a1b12;
+            --digital-color: #5c4314; /* Darker brass for contrast */
+            --digital-shadow: none;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Georgia', 'Times New Roman', serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: background-color 0.5s ease, color 0.5s ease;
+        }
+
+        /* Theme Toggle Button */
+        .theme-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--brass-main);
+            padding: 10px;
+            z-index: 100;
+            opacity: 0.7;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        
+        .theme-toggle:hover {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        .theme-toggle svg {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
+        }
+
+        .clock-container {
+            width: 95vw;
+            max-width: 1200px;
+            position: relative;
+            padding: 20px 0;
+        }
+
+        /* The Main Board (Walnut Texture) */
+        .linear-board {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            background-color: var(--wood-dark);
+            /* diverse wood grain effect */
+            background-image: 
+                repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 3px),
+                linear-gradient(180deg, rgba(0,0,0,0.3) 0%, transparent 15%, transparent 85%, rgba(0,0,0,0.5) 100%),
+                repeating-linear-gradient(45deg, var(--wood-dark) 0%, var(--wood-light) 5%, var(--wood-dark) 10%);
+            border-radius: 8px;
+            /* Deep beveled edge effect */
+            box-shadow: 
+                0 20px 40px rgba(0,0,0,0.7),
+                inset 2px 2px 2px rgba(255,255,255,0.15),
+                inset -2px -2px 2px rgba(0,0,0,0.5),
+                0 0 0 1px #000,
+                0 0 0 5px #1a100a;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: box-shadow 0.5s ease;
+        }
+        
+        /* Adjust shadow in light mode for realism */
+        body.light-mode .linear-board {
+             box-shadow: 
+                0 25px 50px rgba(0,0,0,0.4), /* Softer, more diffuse shadow */
+                inset 2px 2px 2px rgba(255,255,255,0.15),
+                inset -2px -2px 2px rgba(0,0,0,0.5),
+                0 0 0 1px #000,
+                0 0 0 5px #1a100a;
+        }
+
+        /* COMMON LAYER STYLES */
+        .scale-layer {
+            position: absolute;
+            left: var(--edge-width);
+            width: calc(100% - (var(--edge-width) * 2));
+        }
+
+        /* The 4 Time Zones */
+        .zones-layer {
+            top: 0;
+            height: 30%;
+            display: flex;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.1);
+        }
+
+        .zone {
+            flex: 1; /* 25% width each */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 12px;
+            font-weight: 600;
+            color: rgba(212, 175, 55, 0.5); /* Muted brass */
+            text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+            border-right: 1px dashed rgba(212, 175, 55, 0.1);
+            background: linear-gradient(to bottom, rgba(0,0,0,0.2), transparent);
+        }
+        .zone:last-child { border-right: none; }
+
+        /* The Tick Marks */
+        .ticks-layer {
+            top: 30%; 
+            height: 30%;
+            display: flex;
+            pointer-events: none;
+        }
+
+        .tick-hour-container {
+            flex: 1;
+            position: relative;
+            height: 100%;
+        }
+
+        .tick-mark {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 1px;
+            height: 20px; /* Standard tick height */
+            background: linear-gradient(to bottom, var(--brass-light), var(--brass-dark));
+            box-shadow: 1px 0 2px rgba(0,0,0,0.8);
+            transform: translateX(-50%);
+            opacity: 0.7;
+        }
+
+        .tick-major {
+            height: 35px; /* Taller for 0, 6, 12, 18 */
+            width: 2px;
+            background: linear-gradient(to bottom, #fff, var(--brass-main));
+            opacity: 1;
+            z-index: 2;
+        }
+        
+        .tick-half {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            width: 1px;
+            height: 10px;
+            background: rgba(212, 175, 55, 0.2);
+            transform: translateX(-50%);
+        }
+
+        /* The Numbers */
+        .numbers-layer {
+            bottom: 0;
+            height: 45%; 
+            display: flex;
+            pointer-events: none;
+        }
+
+        .number-box {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: flex-end; 
+            justify-content: flex-start; 
+            padding-bottom: 28px; 
+        }
+
+        .brass-number {
+            font-size: 1.6rem;
+            font-weight: 700;
+            line-height: 1;
+            transform: translateX(-50%); 
+            
+            /* Crisp Brass Effect */
+            background: linear-gradient(180deg, #fff 10%, var(--brass-main) 40%, var(--brass-dark) 90%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            
+            /* Sharper shadow */
+            filter: drop-shadow(1px 2px 0px var(--brass-shadow));
+            
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* The Indicator (Brass Spade) */
+        .indicator-container {
+            top: 0;
+            bottom: 0;
+            z-index: 10;
+            pointer-events: none;
+        }
+        
+        .indicator-mover {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 30px; 
+            left: 0%; 
+            transform: translateX(-50%);
+            transition: left 0.1s linear;
+            display: flex;
+            justify-content: center;
+        }
+
+        .brass-hand-svg {
+            height: 100%;
+            width: 100%;
+            filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.8));
+        }
+
+        /* Digital Readout */
+        .digital-readout {
+            margin-top: 25px;
+            font-size: 1.2rem;
+            color: var(--digital-color);
+            text-shadow: var(--digital-shadow);
+            font-family: 'Courier New', monospace;
+            letter-spacing: 3px;
+            opacity: 0.9;
+            border-top: 1px solid rgba(212, 175, 55, 0.2);
+            padding-top: 10px;
+            transition: color 0.5s ease;
+        }
+
+        /* Responsiveness */
+        @media (max-width: 768px) {
+            :root { --edge-width: 25px; } 
+            .linear-board { height: 160px; }
+            .brass-number { font-size: 1.1rem; }
+            .zone { font-size: 9px; letter-spacing: 1px; }
+            .theme-toggle { top: 10px; right: 10px; }
+        }
+    </style>
+</head>
+<body>
+    
+    <!-- Theme Toggle Button -->
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle Light/Dark Mode">
+        <svg viewBox="0 0 24 24">
+            <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20V4Z" />
+        </svg>
+    </button>
+
+    <div class="clock-container">
+        <div class="linear-board">
+            
+            <!-- 1. The Zones Layer (Top) -->
+            <div class="zones-layer scale-layer">
+                <div class="zone">Night</div>
+                <div class="zone">Morning</div>
+                <div class="zone">Afternoon</div>
+                <div class="zone">Evening</div>
+            </div>
+
+            <!-- 2. The Ticks Layer -->
+            <div class="ticks-layer scale-layer" id="ticks-container"></div>
+
+            <!-- 3. The Numbers Layer -->
+            <div class="numbers-layer scale-layer" id="numbers-container"></div>
+
+            <!-- 4. The Indicator -->
+            <div class="indicator-container scale-layer">
+                <div class="indicator-mover" id="indicator">
+                    <svg class="brass-hand-svg" viewBox="0 0 40 200" preserveAspectRatio="none">
+                        <defs>
+                            <linearGradient id="brassGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" style="stop-color:#5c4314;stop-opacity:1" />
+                                <stop offset="30%" style="stop-color:#d4af37;stop-opacity:1" />
+                                <stop offset="50%" style="stop-color:#fffacd;stop-opacity:1" />
+                                <stop offset="70%" style="stop-color:#d4af37;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#5c4314;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <path d="M18,0 L22,0 L22,200 L18,200 Z" fill="url(#brassGradient)" />
+                        <path d="M20,0 L26,6 L14,6 Z" fill="url(#brassGradient)" />
+                        <path fill-rule="evenodd" d="M20,50 C35,50 40,65 20,90 C0,65 5,50 20,50 Z M20,58 C26,58 28,64 20,78 C12,64 14,58 20,58 Z" fill="url(#brassGradient)" />
+                        <circle cx="20" cy="180" r="6" fill="url(#brassGradient)" />
+                    </svg>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="digital-readout" id="digital-time">--:--:--</div>
+
+    <script>
+        const ticksContainer = document.getElementById('ticks-container');
+        const numbersContainer = document.getElementById('numbers-container');
+        const indicator = document.getElementById('indicator');
+        const digitalTime = document.getElementById('digital-time');
+        const themeToggle = document.getElementById('theme-toggle');
+
+        // Theme Toggle Logic
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('light-mode');
+        });
+
+        function isMajor(i) {
+            return i % 6 === 0;
+        }
+
+        function initBoard() {
+            const isSmallScreen = window.innerWidth < 600;
+
+            for (let i = 0; i <= 24; i++) {
+                if (i < 24) {
+                    const tickBox = document.createElement('div');
+                    tickBox.className = 'tick-hour-container';
+                    
+                    const mainTick = document.createElement('div');
+                    mainTick.className = isMajor(i) ? 'tick-mark tick-major' : 'tick-mark';
+                    tickBox.appendChild(mainTick);
+
+                    const halfTick = document.createElement('div');
+                    halfTick.className = 'tick-half';
+                    tickBox.appendChild(halfTick);
+
+                    ticksContainer.appendChild(tickBox);
+
+                    const numberBox = document.createElement('div');
+                    numberBox.className = 'number-box';
+                    
+                    const showNumber = isSmallScreen ? (i % 4 === 0) : (i % 2 === 0);
+
+                    if (showNumber) {
+                        const numSpan = document.createElement('span');
+                        numSpan.className = 'brass-number';
+                        numSpan.textContent = i;
+                        numberBox.appendChild(numSpan);
+                    }
+                    
+                    numbersContainer.appendChild(numberBox);
+                } 
+                else {
+                    const closingTick = document.createElement('div');
+                    closingTick.className = 'tick-mark tick-major';
+                    closingTick.style.left = 'auto';
+                    closingTick.style.right = '0'; 
+                    closingTick.style.transform = 'translateX(50%)'; 
+                    closingTick.style.position = 'absolute';
+                    ticksContainer.appendChild(closingTick);
+
+                    const show24 = isSmallScreen ? (24 % 4 === 0) : (24 % 2 === 0);
+                    
+                    if (show24) {
+                        const closingNum = document.createElement('div');
+                        closingNum.className = 'brass-number';
+                        closingNum.textContent = '24';
+                        closingNum.style.position = 'absolute';
+                        closingNum.style.right = '0';
+                        closingNum.style.bottom = '28px'; 
+                        closingNum.style.transform = 'translateX(50%)'; 
+                        numbersContainer.appendChild(closingNum);
+                    }
+                }
+            }
+        }
+
+        function updateClock() {
+            const now = new Date();
+            const h = now.getHours();
+            const m = now.getMinutes();
+            const s = now.getSeconds();
+            const ms = now.getMilliseconds();
+
+            const totalSeconds = (h * 3600) + (m * 60) + s + (ms / 1000);
+            const percentage = (totalSeconds / 86400) * 100;
+
+            indicator.style.left = `${percentage}%`;
+            digitalTime.textContent = now.toLocaleTimeString('en-GB', { hour12: false });
+
+            requestAnimationFrame(updateClock);
+        }
+
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                ticksContainer.innerHTML = '';
+                numbersContainer.innerHTML = '';
+                initBoard();
+            }, 200);
+        });
+
+        initBoard();
+        updateClock();
+
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful');
+                    })
+                    .catch(err => {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
